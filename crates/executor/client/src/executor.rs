@@ -69,36 +69,9 @@ where
                 .try_into_recovered()
                 .map_err(|_| ClientError::SignatureRecoveryFailed)
         })?;
-
-        // Validate the blocks.
-        profile_report!(VALIDATE_HEADER, {
-            C::Primitives::validate_block(&block, self.chain_spec.clone())
-                .expect("The block is invalid");
-
-            for (header, parent) in sealed_headers.iter().tuple_windows() {
-                C::Primitives::validate_header(parent, self.chain_spec.clone())
-                    .expect("A parent header is invalid");
-
-                C::Primitives::validate_header_against_parent(
-                    header,
-                    parent,
-                    self.chain_spec.clone(),
-                )
-                .expect("The header is invalid against its parent");
-            }
-        });
-
+        println!("Executing the block here!!!!");
         let execution_output =
             profile_report!(BLOCK_EXECUTION, { block_executor.execute(&block) })?;
-
-        // Validate the block post execution.
-        profile_report!(VALIDATE_EXECUTION, {
-            C::Primitives::validate_block_post_execution(
-                &block,
-                self.chain_spec.clone(),
-                &execution_output,
-            )
-        })?;
 
         // Convert the output to an execution outcome.
         let executor_outcome = ExecutionOutcome::new(
