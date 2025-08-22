@@ -1,13 +1,13 @@
+use nvml_wrapper::Nvml;
 use prometheus_client::{
     encoding::text::encode,
     metrics::{counter::Counter, gauge::Gauge},
     registry::Registry,
 };
+use std::sync::Arc;
 use std::{sync::atomic::AtomicU64, time::Duration};
 use sysinfo::{System, SystemExt};
-use nvml_wrapper::Nvml;
 use tokio::net::TcpListener;
-use std::sync::Arc;
 use tracing::info;
 
 // Metrics structure
@@ -132,8 +132,8 @@ pub async fn start_metrics_collection(metrics: Arc<Metrics>) {
     loop {
         // Update all system metrics
         metrics.update_system_metrics();
-        
-        // Sleep for 20 seconds before next update
-        tokio::time::sleep(Duration::from_secs(20)).await;
+
+        // Sleep for 120 seconds before next update
+        tokio::time::sleep(Duration::from_secs(120)).await;
     }
 }

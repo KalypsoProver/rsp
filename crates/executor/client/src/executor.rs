@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use alloy_consensus::{BlockHeader, Header};
-use itertools::Itertools;
 use reth_chainspec::ChainSpec;
 use reth_errors::BlockExecutionError;
 use reth_evm::{

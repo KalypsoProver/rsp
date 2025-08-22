@@ -17,7 +17,7 @@ mod cli;
 mod eth_proofs;
 mod metrics;
 
-use crate::metrics::{Metrics, start_metrics_server, start_metrics_collection};
+use crate::metrics::{start_metrics_collection, start_metrics_server, Metrics};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -48,9 +48,9 @@ async fn main() -> eyre::Result<()> {
 
     // Start metrics server
     let metrics_port = std::env::var("METRICS_PORT")
-        .unwrap_or_else(|_| "9090".to_string())
+        .unwrap_or_else(|_| "5000".to_string())
         .parse::<u16>()
-        .unwrap_or(9090);
+        .unwrap_or(5000);
 
     // Start metrics collection task
     let metrics_for_collection = Arc::clone(&metrics);
@@ -118,10 +118,10 @@ async fn main() -> eyre::Result<()> {
             continue;
         }
         metrics.update_generating_proof_for_block(block_number);
-        // if let Err(err) = executor.execute(header.number).await {
-        //     let error_message = format!("Error handling block number {}: {err}", header.number);
-        //     error!(error_message);
-        // }
+        if let Err(err) = executor.execute(header.number).await {
+            let error_message = format!("Error handling block number {}: {err}", header.number);
+            error!(error_message);
+        }
     }
 
     Ok(())
