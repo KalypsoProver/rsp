@@ -116,15 +116,13 @@ impl EthProofsClient {
             .text()
             .await?;
 
-        info!(
-            "Response from proving endpoint: {:?}",
-            response
-        );
+        info!("Response from proving endpoint: {:?}", response);
 
         // Load environment variables (if not already loaded)
         dotenv().ok();
         let supabase_url = env::var("SUPABASE_URL").expect("SUPABASE_URL not set in .env");
-        let supabase_api_key = env::var("SUPABASE_API_KEY").expect("SUPABASE_API_KEY not set in .env");
+        let supabase_api_key =
+            env::var("SUPABASE_API_KEY").expect("SUPABASE_API_KEY not set in .env");
         let supabase_auth = format!("Bearer {}", supabase_api_key);
         let supabase_json = serde_json::json!({
             "block_number": block_number,
@@ -133,7 +131,7 @@ impl EthProofsClient {
             "response": response,
             "epoch_time": chrono::Utc::now().timestamp()
         });
-        
+
         this.client
             .post(&supabase_url)
             .header("apikey", &supabase_api_key)
