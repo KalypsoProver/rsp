@@ -1,3 +1,5 @@
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::sync::Arc;
 
 use alloy_provider::{Provider, ProviderBuilder, WsConnect};
@@ -117,7 +119,20 @@ async fn main() -> eyre::Result<()> {
             info!("Skipping block {} as it does not end with '00'", block_number);
             continue;
         }
-        metrics.update_generating_proof_for_block(block_number);
+      
+        // Write block number to file
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
+        let file_path = format!("{}/block_number.txt", home_dir);
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&file_path)
+            .map_err(|e| eyre::eyre!("Failed to open file: {}", e))?;
+        
+        writeln!(file, "{}", block_number)
+            .map_err(|e| eyre::eyre!("Failed to write to file: {}", e))?;
+
         if let Err(err) = executor.execute(header.number).await {
             let error_message = format!("Error handling block number {}: {err}", header.number);
             error!(error_message);

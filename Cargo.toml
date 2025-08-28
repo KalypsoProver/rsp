@@ -3,6 +3,7 @@ members = [
     "bin/host",
     "bin/continuous",
     "bin/eth-proofs",
+    "bin/monitor",
     "crates/executor/client",
     "crates/executor/host",
     "crates/mpt",
