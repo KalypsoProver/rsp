@@ -53,7 +53,7 @@ pub struct Config {
     pub custom_beneficiary: Option<Address>,
     pub prove_mode: Option<SP1ProofMode>,
     pub skip_client_execution: bool,
-    pub opcode_tracking: bool,
+    pub opcode_tracking: bool
 }
 
 impl Config {

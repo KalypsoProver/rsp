@@ -1,28 +1,27 @@
+use std::sync::Arc;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::sync::Arc;
 
 use alloy_provider::{Provider, ProviderBuilder, WsConnect};
 use clap::Parser;
 use cli::Args;
 use eth_proofs::EthProofsClient;
 use futures::StreamExt;
-use rsp_host_executor::{
-    create_eth_block_execution_strategy_factory, BlockExecutor, EthExecutorComponents, FullExecutor,
+use rsp_host_executor::{create_eth_block_execution_strategy_factory, BlockExecutor,
+    EthExecutorComponents, FullExecutor,
 };
 use rsp_provider::create_provider;
 use sp1_sdk::{include_elf, ProverClient};
 use tracing::{error, info};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-
+use rustls::crypto::{ring, CryptoProvider};
 mod cli;
-mod eth_proofs;
-mod metrics;
 
-use crate::metrics::{start_metrics_collection, start_metrics_server, Metrics};
+mod eth_proofs;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
+    let _ = CryptoProvider::install_default(ring::default_provider());
     // Initialize the environment variables.
     dotenv::dotenv().ok();
 
@@ -41,31 +40,9 @@ async fn main() -> eyre::Result<()> {
         )
         .init();
 
-    // Initialize metrics
-    let metrics = Arc::new(Metrics::new());
-
     // Parse the command line arguments.
     let args = Args::parse();
     let config = args.as_config().await?;
-
-    // Start metrics server
-    let metrics_port = std::env::var("METRICS_PORT")
-        .unwrap_or_else(|_| "5000".to_string())
-        .parse::<u16>()
-        .unwrap_or(5000);
-
-    // Start metrics collection task
-    let metrics_for_collection = Arc::clone(&metrics);
-    tokio::spawn(async move {
-        start_metrics_collection(metrics_for_collection).await;
-    });
-
-    let metrics_clone = Arc::clone(&metrics);
-    tokio::spawn(async move {
-        if let Err(e) = start_metrics_server(metrics_clone, metrics_port).await {
-            error!("Metrics server error: {}", e);
-        }
-    });
 
     let elf = include_elf!("rsp-client").to_vec();
     let block_execution_strategy_factory =
@@ -83,7 +60,8 @@ async fn main() -> eyre::Result<()> {
 
     // Subscribe to block headers.
     let subscription = ws_provider.subscribe_blocks().await?;
-    let mut stream = subscription.into_stream();
+    let mut stream =
+        subscription.into_stream();
 
     let builder = ProverClient::builder().cuda();
     let client = if let Some(endpoint) = &args.moongate_endpoint {
@@ -104,22 +82,21 @@ async fn main() -> eyre::Result<()> {
     )
     .await?;
 
-    let latest_block = http_provider.get_block_number().await?;
-    info!("Latest ETH block number: {}", latest_block);
+    info!("Latest block number: {}", http_provider.get_block_number().await?);
 
     while let Some(header) = stream.next().await {
-        // Wait for the block to be available in the HTTP provider
+        // // Wait for the block to be avaliable in the HTTP provider
         let block_number = executor.wait_for_block(header.number).await?;
         info!("Processing block: {}", block_number);
 
         let last_two_digits = format!("{:02}", block_number % 100);
-        info!("Last two digits of block number: {}", last_two_digits);
 
+        info!("Last two digits of block number: {}", last_two_digits);
         if last_two_digits != "00" {
             info!("Skipping block {} as it does not end with '00'", block_number);
             continue;
         }
-      
+
         // Write block number to file
         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
         let file_path = format!("{}/block_number.txt", home_dir);
@@ -132,7 +109,6 @@ async fn main() -> eyre::Result<()> {
         
         writeln!(file, "{}", block_number)
             .map_err(|e| eyre::eyre!("Failed to write to file: {}", e))?;
-
         if let Err(err) = executor.execute(header.number).await {
             let error_message = format!("Error handling block number {}: {err}", header.number);
             error!(error_message);
