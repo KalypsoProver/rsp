@@ -212,6 +212,8 @@ where
         let mut before_storage_proofs = Vec::new();
         let mut after_storage_proofs = Vec::new();
 
+        // Timer: measure time to fetch all storage proofs
+        let start_time = std::time::Instant::now();
         for (address, used_keys) in state_requests.iter() {
             let modified_keys = bundle_state
                 .state
@@ -242,12 +244,15 @@ where
                 .await?;
             after_storage_proofs.push(eip1186_proof_to_account_proof(storage_proof));
         }
+        let storage_proof_time = start_time.elapsed().as_secs_f64();
 
         let state = EthereumState::from_transition_proofs(
             self.state_root,
             &before_storage_proofs.iter().map(|item| (item.address, item.clone())).collect(),
             &after_storage_proofs.iter().map(|item| (item.address, item.clone())).collect(),
         )?;
+
+        tracing::info!("fetched all storage proofs in {:.3} sec", storage_proof_time);
 
         Ok(state)
     }
