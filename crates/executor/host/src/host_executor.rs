@@ -75,20 +75,28 @@ impl<C: ConfigureEvm, CS> HostExecutor<C, CS> {
     {
         // Fetch the current block and the previous block from the provider.
         tracing::info!("fetching the current block and the previous block");
+        // Timer: measure time to fetch current block
+        let start_time = std::time::Instant::now();
         let rpc_block = provider
             .get_block_by_number(block_number.into())
             .full()
             .await?
             .ok_or(HostError::ExpectedBlock(block_number))?;
+        let rpc_block_time = start_time.elapsed().as_secs_f64();
+        tracing::info!("fetched current block in {:.3} sec", rpc_block_time);
 
         let current_block = C::Primitives::into_primitive_block(rpc_block.clone());
 
+        // Timer: measure time to fetch previous block
+        let start_time = std::time::Instant::now();
         let previous_block = provider
             .get_block_by_number((block_number - 1).into())
             .full()
             .await?
             .ok_or(HostError::ExpectedBlock(block_number))
             .map(C::Primitives::into_primitive_block)?;
+        let previous_block_time = start_time.elapsed().as_secs_f64();
+        tracing::info!("fetched previous block in {:.3} sec", previous_block_time);
 
         // Setup the database for the block executor.
         tracing::info!("setting up the database for the block executor");
@@ -131,7 +139,11 @@ impl<C: ConfigureEvm, CS> HostExecutor<C, CS> {
             self.chain_spec.clone(),
         )?;
 
+        // Timer: measure time to create block executor
+        let start_time = std::time::Instant::now();
         let execution_output = block_executor.execute(&block)?;
+        let block_executor_time = start_time.elapsed().as_secs_f64();
+        tracing::info!("block executed in {:.3} sec", block_executor_time);
 
         // Validate the block post execution.
         tracing::info!("validating the block post execution");

@@ -96,7 +96,7 @@ pub trait BlockExecutor<C: ExecutorComponents> {
             let input_block_hash = client_input.current_block.header.hash_slow();
 
             if input_block_hash != executed_block_hash {
-                return Err(HostError::HeaderMismatch(executed_block_hash, input_block_hash))?
+                return Err(HostError::HeaderMismatch(executed_block_hash, input_block_hash))?;
             }
 
             info!(?executed_block_hash, "Execution successful");
@@ -233,13 +233,11 @@ where
         })
     }
 
-    pub async fn wait_for_block(&self, block_number: u64) -> eyre::Result<()> {
-        let block_number = block_number.into();
-
-        while self.provider.get_block_by_number(block_number).await?.is_none() {
+    pub async fn wait_for_block(&self, block_number: u64) -> eyre::Result<u64> {
+        while self.provider.get_block_by_number(block_number.into()).await?.is_none() {
             sleep(Duration::from_millis(100)).await;
         }
-        Ok(())
+        Ok(block_number)
     }
 }
 
