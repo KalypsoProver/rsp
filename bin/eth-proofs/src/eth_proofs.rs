@@ -97,6 +97,7 @@ impl EthProofsClient {
             "verifier_id": vk.bytes32(),
             "cluster_id": self.cluster_id,
         });
+        info!("Verification key (bytes32): {:?}", vk.bytes32());
 
         info!(
             "Reporting proof for block {}: proving cycles {} proof generation time {}",
