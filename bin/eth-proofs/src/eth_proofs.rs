@@ -1,3 +1,6 @@
+use std::fs::{File, OpenOptions};
+use std::fs;
+use std::io::Write;
 use std::time::Duration;
 
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -49,6 +52,28 @@ impl EthProofsClient {
             .map_err(|e| eyre!(e))
             .and_then(|r| r.error_for_status().map_err(|e| eyre!(e)));
 
+        if response.is_ok() {
+            info!("Successfully reported queued proof for block {}", block_number);
+            // Create eth_proofs directory and write block number to file
+            let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
+            let eth_proofs_dir = format!("{}/eth_proofs", home_dir);
+            
+            // Create eth_proofs directory if it doesn't exist
+            fs::create_dir_all(&eth_proofs_dir)
+                .map_err(|e| eyre::eyre!("Failed to create directory: {}", e))?;
+            
+            let file_path = format!("{}/block_number.txt", eth_proofs_dir);
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(&file_path)
+                .map_err(|e| eyre::eyre!("Failed to open file: {}", e))?;
+
+            writeln!(file, "{}", block_number)
+                .map_err(|e| eyre::eyre!("Failed to write to file: {}", e))?;
+        }
+
         if let Err(ref err) = response {
             error!("Failed to report proof queuing: {}", err);
         }
@@ -97,7 +122,22 @@ impl EthProofsClient {
             "verifier_id": vk.bytes32(),
             "cluster_id": self.cluster_id,
         });
-        info!("Verification key (bytes32): {:?}", vk.bytes32());
+
+        // Write the proof and vk to binary files
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
+        let eth_proofs_dir = format!("{}/eth_proofs", home_dir);
+        
+        // Create eth_proofs directory if it doesn't exist
+        fs::create_dir_all(&eth_proofs_dir)?;
+        
+        let proof_file_path = format!("{}/proof_{}.bin", eth_proofs_dir, block_number);
+        let vk_file_path = format!("{}/vkey_{}.bin", eth_proofs_dir, block_number);
+
+        let mut proof_file = File::create(proof_file_path)?;
+        proof_file.write_all(proof_bytes)?;
+
+        let mut vk_file = File::create(vk_file_path)?;
+        vk_file.write_all(&vk.bytes32_raw())?;
 
         info!(
             "Reporting proof for block {}: proving cycles {} proof generation time {}",

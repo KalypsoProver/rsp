@@ -36,15 +36,11 @@ async fn get_eth_proofs_status() -> impl Responder {
     // Read queued block from file
     let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
     let file_path = format!("{}/block_number.txt", home_dir);
-    let queued_block = OpenOptions::new()
-        .read(true)
-        .open(&file_path)
-        .ok()
-        .and_then(|mut file| {
-            let mut content = String::new();
-            file.read_to_string(&mut content).ok()?;
-            Some(content.trim().to_string())
-        });
+    let queued_block = OpenOptions::new().read(true).open(&file_path).ok().and_then(|mut file| {
+        let mut content = String::new();
+        file.read_to_string(&mut content).ok()?;
+        Some(content.trim().to_string())
+    });
 
     let status = SystemStatus {
         queued_block,
@@ -58,12 +54,9 @@ async fn get_eth_proofs_status() -> impl Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("Starting server at 0.0.0.0:9090");
-    
-    HttpServer::new(|| {
-        App::new()
-            .route("/eth_proofs_status", web::get().to(get_eth_proofs_status))
-    })
-    .bind("0.0.0.0:9090")?
-    .run()
-    .await
+
+    HttpServer::new(|| App::new().route("/eth_proofs_status", web::get().to(get_eth_proofs_status)))
+        .bind("0.0.0.0:9090")?
+        .run()
+        .await
 }

@@ -1,20 +1,18 @@
 use std::sync::Arc;
-use std::fs::OpenOptions;
-use std::io::Write;
 
 use alloy_provider::{Provider, ProviderBuilder, WsConnect};
 use clap::Parser;
 use cli::Args;
 use eth_proofs::EthProofsClient;
 use futures::StreamExt;
-use rsp_host_executor::{create_eth_block_execution_strategy_factory, BlockExecutor,
-    EthExecutorComponents, FullExecutor,
+use rsp_host_executor::{
+    create_eth_block_execution_strategy_factory, BlockExecutor, EthExecutorComponents, FullExecutor,
 };
 use rsp_provider::create_provider;
+use rustls::crypto::{ring, CryptoProvider};
 use sp1_sdk::{include_elf, ProverClient};
 use tracing::{error, info};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-use rustls::crypto::{ring, CryptoProvider};
 mod cli;
 
 mod eth_proofs;
@@ -60,8 +58,7 @@ async fn main() -> eyre::Result<()> {
 
     // Subscribe to block headers.
     let subscription = ws_provider.subscribe_blocks().await?;
-    let mut stream =
-        subscription.into_stream();
+    let mut stream = subscription.into_stream();
 
     let builder = ProverClient::builder().cuda();
     let client = if let Some(endpoint) = &args.moongate_endpoint {
@@ -97,18 +94,6 @@ async fn main() -> eyre::Result<()> {
             continue;
         }
 
-        // Write block number to file
-        let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
-        let file_path = format!("{}/block_number.txt", home_dir);
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(&file_path)
-            .map_err(|e| eyre::eyre!("Failed to open file: {}", e))?;
-        
-        writeln!(file, "{}", block_number)
-            .map_err(|e| eyre::eyre!("Failed to write to file: {}", e))?;
         if let Err(err) = executor.execute(header.number).await {
             let error_message = format!("Error handling block number {}: {err}", header.number);
             error!(error_message);
