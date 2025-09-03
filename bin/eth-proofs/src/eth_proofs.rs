@@ -1,5 +1,5 @@
-use std::fs::{File, OpenOptions};
 use std::fs;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::time::Duration;
 
@@ -54,15 +54,9 @@ impl EthProofsClient {
 
         if response.is_ok() {
             info!("Successfully reported queued proof for block {}", block_number);
-            // Create eth_proofs directory and write block number to file
+            // Write block number to file
             let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
-            let eth_proofs_dir = format!("{}/eth_proofs", home_dir);
-            
-            // Create eth_proofs directory if it doesn't exist
-            fs::create_dir_all(&eth_proofs_dir)
-                .map_err(|e| eyre::eyre!("Failed to create directory: {}", e))?;
-            
-            let file_path = format!("{}/block_number.txt", eth_proofs_dir);
+            let file_path = format!("{}/block_number.txt", home_dir);
             let mut file = OpenOptions::new()
                 .write(true)
                 .create(true)
@@ -126,10 +120,10 @@ impl EthProofsClient {
         // Write the proof and vk to binary files
         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/root".to_string());
         let eth_proofs_dir = format!("{}/eth_proofs", home_dir);
-        
+
         // Create eth_proofs directory if it doesn't exist
         fs::create_dir_all(&eth_proofs_dir)?;
-        
+
         let proof_file_path = format!("{}/proof_{}.bin", eth_proofs_dir, block_number);
         let vk_file_path = format!("{}/vkey_{}.bin", eth_proofs_dir, block_number);
 
