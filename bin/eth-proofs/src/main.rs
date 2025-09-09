@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{env, sync::Arc};
 
 use alloy_provider::{Provider, ProviderBuilder, WsConnect};
 use clap::Parser;
@@ -13,9 +13,11 @@ use rustls::crypto::{ring, CryptoProvider};
 use sp1_sdk::{include_elf, ProverClient};
 use tracing::{error, info};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-mod cli;
 
+use crate::supabase::post_to_supabase;
+mod cli;
 mod eth_proofs;
+mod supabase;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -96,6 +98,15 @@ async fn main() -> eyre::Result<()> {
 
         if let Err(err) = executor.execute(header.number).await {
             let error_message = format!("Error handling block number {}: {err}", header.number);
+            let supabase_url =
+                env::var("SUPABASE_URL").expect("SUPABASE_URL not set in .env") + "/eth_proofs_error";
+            let supabase_json = serde_json::json!({
+                "block_number": block_number,
+                "timestamp": chrono::Utc::now().timestamp(),
+                "error_message":error_message
+            });
+
+            post_to_supabase(&supabase_url, &supabase_json).await?;
             error!(error_message);
         }
     }
