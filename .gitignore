@@ -1,5 +1,6 @@
 # Cargo build
 **/target
+enclave.eif
 
 # Cargo config
 .cargo
