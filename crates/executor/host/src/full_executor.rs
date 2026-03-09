@@ -86,6 +86,8 @@ pub trait BlockExecutor<C: ExecutorComponents> {
                 .await
                 .map_err(|err| eyre::eyre!("{err}"))?;
 
+            println!("Execution report: {}",execution_report);
+
             // Read the block header.
             let header = public_values.read::<CommittedHeader>().header;
             let executed_block_hash = header.hash_slow();
@@ -110,11 +112,10 @@ pub trait BlockExecutor<C: ExecutorComponents> {
             let client = self.client();
             let pk = self.pk();
 
-            let (proof, cycle_count) = client
+            let (proof, _cycle_count) = client
                 .prove_with_cycles(pk.as_ref(), stdin, prove_mode)
                 .await
                 .map_err(|err| eyre::eyre!("{err}"))?;
-            // println!("Proof generated with cycle count: {}", cycle_count.unwrap());
             let proving_duration = proving_start.elapsed();
             let proof_bytes = bincode::serialize(&proof.proof).unwrap();
 
@@ -123,7 +124,7 @@ pub trait BlockExecutor<C: ExecutorComponents> {
                     client_input.current_block.number,
                     &proof_bytes,
                     self.vk().as_ref(),
-                    Some(10000),
+                    Some(1),
                     proving_duration,
                 )
                 .await?;

@@ -111,7 +111,6 @@ impl EthProofsClient {
         let json = serde_json::json!({
             "proof": STANDARD.encode(proof_bytes),
             "block_number": block_number,
-            "proving_cycles": cycle_count,
             "proving_time": (elapsed * 1000.0) as u64,
             "verifier_id": vk.bytes32(),
             "cluster_id": self.cluster_id,

@@ -159,7 +159,7 @@ impl PersistExecutionReport {
 /// Adds metrics for the given precompile on the record.
 fn add_metrics(name: String, record: &mut Vec<String>, execution_report: &ExecutionReport) {
     let total = execution_report.cycle_tracker.get(&name).unwrap_or(&0);
-
+    println!("Total cycles for {name}: {total}");
     let count = execution_report.invocation_tracker.get(&name).unwrap_or(&0);
 
     record.push(total.to_string());
@@ -185,6 +185,8 @@ impl ExecutionHooks for PersistExecutionReport {
         if file_is_empty {
             self.write_header(&mut writer)?;
         }
+
+        println!("Writing execution report to {}", execution_report);
 
         self.write_record::<P>(&mut writer, executed_block, execution_report)?;
 
