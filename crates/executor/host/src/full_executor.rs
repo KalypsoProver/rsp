@@ -114,7 +114,7 @@ pub trait BlockExecutor<C: ExecutorComponents> {
                 .prove_with_cycles(pk.as_ref(), stdin, prove_mode)
                 .await
                 .map_err(|err| eyre::eyre!("{err}"))?;
-
+            // println!("Proof generated with cycle count: {}", cycle_count.unwrap());
             let proving_duration = proving_start.elapsed();
             let proof_bytes = bincode::serialize(&proof.proof).unwrap();
 
@@ -123,7 +123,7 @@ pub trait BlockExecutor<C: ExecutorComponents> {
                     client_input.current_block.number,
                     &proof_bytes,
                     self.vk().as_ref(),
-                    cycle_count,
+                    Some(10000),
                     proving_duration,
                 )
                 .await?;

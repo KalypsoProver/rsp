@@ -87,10 +87,10 @@ async fn main() -> eyre::Result<()> {
         let last_two_digits = format!("{:02}", block_number % 100);
 
         info!("Last two digits of block number: {}", last_two_digits);
-        if last_two_digits != "00" {
-            info!("Skipping block {} as it does not end with '00'", block_number);
-            continue;
-        }
+        // if last_two_digits != "00" {
+        //     info!("Skipping block {} as it does not end with '00'", block_number);
+        //     continue;
+        // }
 
         if let Err(err) = executor.execute(header.number).await {
             let error_message = format!("Error handling block number {}: {err}", header.number);
