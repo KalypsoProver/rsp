@@ -62,14 +62,10 @@ async fn main() -> eyre::Result<()> {
     let subscription = ws_provider.subscribe_blocks().await?;
     let mut stream = subscription.into_stream();
 
-    let builder = ProverClient::builder().cuda();
-    let client = if let Some(endpoint) = &args.moongate_endpoint {
-        builder.server(endpoint).build()
-    } else {
-        builder.build()
-    };
-
-    let client = Arc::new(client);
+    if args.moongate_endpoint.is_some() {
+        tracing::warn!("moongate_endpoint is not supported in SP1 v6, using local CudaProver");
+    }
+    let client = Arc::new(ProverClient::builder().cuda().build().await);
 
     let executor = FullExecutor::<EthExecutorComponents<_, _>, _>::try_new(
         http_provider.clone(),

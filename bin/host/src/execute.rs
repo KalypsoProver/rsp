@@ -7,8 +7,7 @@ use rsp_client_executor::executor::{
     VALIDATE_EXECUTION,
 };
 use rsp_host_executor::ExecutionHooks;
-use serde::{Deserialize, Serialize};
-use sp1_core_executor::syscalls::SyscallCode;
+use sp1_core_executor::SyscallCode;
 use sp1_sdk::ExecutionReport;
 use std::{
     fs::{File, OpenOptions},
@@ -28,22 +27,6 @@ const PRECOMPILES: [&str; 10] = [
     "blake2f",
     "kzg-point-evaluation",
 ];
-
-#[derive(Serialize, Deserialize)]
-struct ExecutionReportData {
-    chain_id: u64,
-    block_number: u64,
-    gas_used: u64,
-    tx_count: usize,
-    number_cycles: u64,
-    number_syscalls: u64,
-    bn_add_cycles: u64,
-    bn_mul_cycles: u64,
-    bn_pair_cycles: u64,
-    kzg_point_eval_cycles: u64,
-    keccak_count: u64,
-    secp256k1_decompress_count: u64,
-}
 
 #[derive(Debug)]
 pub struct PersistExecutionReport {
@@ -95,7 +78,7 @@ impl PersistExecutionReport {
             headers.push("syscalls_count".to_string());
             headers.push("prover_gas".to_string());
 
-            // Add syscall headers
+            // Add per-syscall headers
             for s in SyscallCode::iter() {
                 headers.push(s.to_string().to_lowercase());
             }
@@ -155,8 +138,9 @@ impl PersistExecutionReport {
                 execution_report.cycle_tracker.get(COMPUTE_STATE_ROOT).unwrap_or(&0).to_string(),
             );
             record.push(execution_report.total_syscall_count().to_string());
-            record.push(execution_report.gas.unwrap_or_default().to_string());
+            record.push(execution_report.gas().unwrap_or_default().to_string());
 
+            // Add per-syscall counts
             for s in SyscallCode::iter() {
                 record.push(execution_report.syscall_counts[s].to_string());
             }
@@ -175,7 +159,7 @@ impl PersistExecutionReport {
 /// Adds metrics for the given precompile on the record.
 fn add_metrics(name: String, record: &mut Vec<String>, execution_report: &ExecutionReport) {
     let total = execution_report.cycle_tracker.get(&name).unwrap_or(&0);
-
+    println!("Total cycles for {name}: {total}");
     let count = execution_report.invocation_tracker.get(&name).unwrap_or(&0);
 
     record.push(total.to_string());
@@ -201,6 +185,8 @@ impl ExecutionHooks for PersistExecutionReport {
         if file_is_empty {
             self.write_header(&mut writer)?;
         }
+
+        println!("Writing execution report to {}", execution_report);
 
         self.write_record::<P>(&mut writer, executed_block, execution_report)?;
 
