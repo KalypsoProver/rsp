@@ -1,28 +1,175 @@
-# Reth Succinct Processor (RSP)
+# Reth Succinct Processor Setup
 
-RSP is a minimal implementation of generating zero-knowledge proofs of EVM block execution using [Reth](https://reth.rs). Supports both Ethereum and OP Stack.
+Steps for setting up Reth Succinct Processor (RSP) on an Ubuntu instance.
 
-[Docs](https://succinctlabs.github.io/rsp/)
+## Steps
 
-## Overview
+### 1. Clone the repository
 
-RSP is designed to generate zero-knowledge proofs of EVM block execution using components from [Reth](https://reth.rs) and [SP1](https://docs.succinct.xyz/docs/sp1/introduction). The system is split between a host CLI that prepares execution data and orchestrates the process, and a client program that runs within a zero-knowledge virtual machine (SP1) to generate proofs.
+```bash
+git clone https://github.com/KalypsoProver/rsp.git
+```
 
-The repository is organized into the following directories:
+### 2. Install Rust
 
-* `book`: The documentation for RSP users and developers.
-* `bin/client` and `bin/client`: The programs that runs inside the zkVM.
-* `bin/host`: The CLI to prepare the proving process.
-* `crates`: RSP components like the host and client executors
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
 
+### 3. Setup SP1
 
-> [!CAUTION]
->
-> This repository is still an active work-in-progress and is not audited or meant for production usage.
+Follow the official guide at [docs.succinct.xyz](https://docs.succinct.xyz/docs/sp1/getting-started/install).
 
-## Acknowledgments
+Verify that the installation was successful with the following command:
 
-This repo would not exist without:
+```bash
+cargo prove --version
+```
 
-* [Reth](https://reth.rs): Highly modular Ethereum execution layer implementation.
-* [SP1](https://github.com/succinctlabs/sp1): The fastest, most feature-complete zkVM for developers.
+### 4. Install m4, OpenSSL
+
+> **Note:** `m4` and `openssl` are required for building the project.
+
+```bash
+sudo apt update
+sudo apt install -y m4 libssl-dev
+```
+
+### 5. NVIDIA GPU drivers and toolkit setup
+
+Make sure the NVIDIA GPU drivers are set up and the NVIDIA container toolkit is installed. Verify using the following commands:
+
+```bash
+nvidia-smi
+```
+
+```bash
+nvcc --version
+```
+
+### 6. Build the eth-proofs and monitoring executables
+
+For eth-proofs:
+
+```bash
+cargo build --release --bin eth-proofs
+```
+
+For monitoring:
+
+```bash
+cargo build --release --bin monitor
+```
+
+### 7. Setup systemd services
+
+#### eth-proofs service:
+
+Create a new systemd unit file for the eth-proofs service:
+
+```bash
+sudo vim /etc/systemd/system/eth-proofs.service
+```
+
+Paste the following configuration into the file:
+
+```ini
+[Unit]
+Description=Eth Proofs Service
+After=network.target
+
+[Service]
+ExecStart=<REPLACE WITH COMMAND TO EXECUTE ETH-PROOFS SERVICE>
+Restart=always
+RestartSec=5
+EnvironmentFile=/root/.env
+User=root
+WorkingDirectory=/root
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Reload systemd to pick up the new unit file, then enable and start the service:
+
+```bash
+# Reload systemd manager configuration
+sudo systemctl daemon-reload
+
+# Enable the service to start automatically on boot
+sudo systemctl enable eth-proofs.service
+
+# Start the service immediately
+sudo systemctl start eth-proofs.service
+```
+
+Check the service status and follow the logs:
+
+```bash
+# Check the current status of the service
+sudo systemctl status eth-proofs.service
+
+# Stream live logs from the service
+sudo journalctl -u eth-proofs.service -f
+```
+
+#### Monitor service
+
+Add the following monitoring credentials to your `.env` file:
+
+```
+SUPABASE_API_KEY=<REPLACE_WITH_SUPABASE_API_KEY>
+SUPABASE_URL=<REPLACE_WITH_SUPABASE_URL>
+```
+
+Create a new systemd unit file for the monitor service:
+
+```bash
+sudo vim /etc/systemd/system/eth-proofs-monitor.service
+```
+
+Paste the following configuration into the file:
+
+```ini
+[Unit]
+Description=Eth Proofs Monitor
+After=network.target
+
+[Service]
+ExecStart=/root/monitor
+Restart=always
+RestartSec=5
+EnvironmentFile=/root/.env
+User=root
+WorkingDirectory=/root
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Reload systemd to pick up the new unit file, then enable and start the service:
+
+```bash
+# Reload systemd manager configuration
+sudo systemctl daemon-reload
+
+# Enable the service to start automatically on boot
+sudo systemctl enable eth-proofs-monitor.service
+
+# Start the service immediately
+sudo systemctl start eth-proofs-monitor.service
+```
+
+Check the service status and follow the logs:
+
+```bash
+# Check the current status of the service
+sudo systemctl status eth-proofs-monitor.service
+
+# Stream live logs from the service
+sudo journalctl -u eth-proofs-monitor.service -f
+```
+
+### 8. Setup Cloudflare tunnel
+
+Set up a [Cloudflare tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) on port `9090` to expose the monitoring endpoint.
